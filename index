@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Game Đêm Trung Thu</title>
+    <!-- Sử dụng font Mali (font viết tay stylized) -->
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Đảm bảo mô hình hộp (box model) nhất quán trên mọi trình duyệt */
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --main-blue: #0077ff; 
+            --dark-blue: #0a1930; 
+            --main-gold: #ffc107; 
+            --glow-blue: rgba(0, 119, 255, 0.9);
+            --glow-gold: rgba(255, 193, 7, 0.9);
+            --dark-bg: #12122b; 
+            --text-color: #ffffff;
+            --reel-height: 150px; 
+            --cell-height: 150px; 
+            --number-range: 10; 
+        }
+
+        /* -------------------- FIX LỖI CUỘN TRANG & CĂN CHỈNH -------------------- */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Mali', cursive;
+            background-color: var(--dark-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 30px 0 50px 0; 
+            min-height: 100vh; 
+            position: relative;
+            text-align: center;
+        }
+
+        .game-area {
+            margin: 0 auto; 
+            max-width: 500px; 
+            width: 95%; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        /* Footer */
+        .footer-info {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            max-width: 80%;
+            word-break: break-all;
+            padding-bottom: 10px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* -------------------- NỀN VÀ TRANG TRÍ (Giữ nguyên) -------------------- */
+        .background-stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: transparent;
+            background-image: 
+                radial-gradient(rgba(255, 255, 255, 1) 2px, transparent 2px),
+                radial-gradient(rgba(255, 255, 255, 0.8) 1.5px, transparent 1.5px),
+                radial-gradient(rgba(255, 255, 255, 0.6) 1px, transparent 1px);
+                
+            background-size: 400px 400px, 200px 200px, 100px 100px; 
+            background-position: 0 0, 50px 50px, 25px 25px; 
+            animation: twinkling 60s linear infinite;
+        }
+
+        @keyframes twinkling {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        .moon {
+            position: fixed; 
+            top: 50px;
+            right: 50px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff, #ffe082);
+            box-shadow: 0 0 60px #fff, 0 0 120px #ffeb3b; 
+            z-index: -1;
+            animation: moon-float 15s ease-in-out infinite alternate;
+        }
+        
+        @keyframes moon-float {
+            from { transform: translateY(0) rotate(0deg); }
+            to { transform: translateY(-15px) rotate(1deg); }
+        }
+
+        .lantern-container {
+            position: fixed; 
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+        
+        .lantern {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            text-shadow: 0 0 12px red, 0 0 25px yellow; 
+            animation: lantern-sway 5s ease-in-out infinite alternate, lantern-flicker 2s infinite alternate;
+        }
+
+        .lantern::after { content: '🏮'; }
+        .l1 { top: 10%; left: 5%; animation-delay: 0s; } .l2 { top: 20%; left: 90%; animation-delay: 1.5s; }
+        .l3 { top: 85%; left: 15%; animation-delay: 3s; } .l4 { top: 5%; left: 40%; animation-delay: 0.5s; }
+        .l5 { top: 50%; left: 5%; animation-delay: 2.5s; } .l6 { top: 70%; left: 80%; animation-delay: 4s; }
+        .l7 { top: 30%; left: 20%; animation-delay: 1s; } .l8 { top: 60%; left: 45%; animation-delay: 3.5s; }
+        .l9 { top: 15%; left: 70%; animation-delay: 2s; } .l10 { top: 90%; left: 60%; animation-delay: 4.5s; }
+        .l11 { top: 40%; left: 95%; animation-delay: 0.7s; } .l12 { top: 75%; left: 30%; animation-delay: 3.2s; }
+        .l13 { top: 25%; left: 85%; animation-delay: 1.8s; } .l14 { top: 65%; left: 10%; animation-delay: 4.2s; }
+        .l15 { top: 35%; left: 55%; animation-delay: 2.7s; }
+
+        @keyframes lantern-sway {
+            0% { transform: translate(0, 0) rotate(-5deg); }
+            100% { transform: translate(10px, 5px) rotate(5deg); }
+        }
+        
+        @keyframes lantern-flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        /* -------------------- TIÊU ĐỀ & KHUNG QUAY SỐ -------------------- */
+        .title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 15px var(--glow-gold), 0 0 30px var(--glow-gold);
+            border: 4px solid var(--main-gold);
+            padding: 15px 30px;
+            border-radius: 15px;
+            background-color: rgba(0, 0, 0, 0.4);
+            margin-bottom: 40px; 
+            animation: title-pulse 3s infinite alternate;
+            color: var(--text-color);
+            text-align: center; 
+            max-width: 600px;
+        }
+
+        @keyframes title-pulse {
+            from { transform: scale(1); box-shadow: 0 0 20px var(--glow-gold); }
+            to { transform: scale(1.02); box-shadow: 0 0 30px var(--glow-gold); }
+        }
+
+        /* Khung viền ngoài cùng được trang trí */
+        .slot-frame-wrapper {
+            position: relative;
+            padding: 30px; 
+            border-radius: 20px;
+            background: linear-gradient(135deg, #a00 0%, #d00 50%, #a00 100%);
+            border: 6px solid #ffd700; 
+            box-shadow: 0 0 40px #ff4500, inset 0 0 20px #ffc107;
+            margin-bottom: 30px; 
+        }
+
+        /* Biểu tượng trang trí trên khung viền (Giữ nguyên) */
+        .decoration-symbol {
+            position: absolute;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px #ffea00;
+            animation: symbol-pulse 3s infinite alternate;
+            z-index: 1; 
+        }
+
+        .deco-tl { top: 10px; left: 10px; transform: rotate(-15deg); }
+        .deco-tr { top: 10px; right: 10px; transform: rotate(15deg); }
+        .deco-bl { bottom: 10px; left: 10px; transform: rotate(15deg); }
+        .deco-br { bottom: 10px; right: 10px; transform: rotate(-15deg); }
+        .deco-ct { top: -25px; left: 50%; transform: translateX(-50%); font-size: 4rem; }
+
+        @keyframes symbol-pulse {
+            0% { transform: scale(1); opacity: 0.9; }
+            100% { transform: scale(1.05); opacity: 1; }
+        }
+
+        /* Khung chứa các cuộn số (Giữ nguyên) */
+        .slot-machine {
+            display: flex;
+            background-color: var(--dark-blue);
+            border: 4px solid var(--main-gold); 
+            border-radius: 15px;
+            padding: 15px; 
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+            overflow: hidden; 
+        }
+
+        .reel-container {
+            width: 120px; 
+            height: var(--reel-height);
+            margin: 0 10px;
+            background-color: var(--dark-blue);
+            border: 2px solid var(--main-gold);
+            border-radius: 8px;
+            overflow: hidden; 
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .reel {
+            position: absolute;
+            width: 100%;
+            transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1); 
+        }
+        
+        .reel.spinning-blur {
+            filter: blur(3px);
+            transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1), filter 0.5s ease-out; 
+        }
+        .reel:not(.spinning-blur) {
+            filter: none;
+            transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1), filter 0.8s ease-in; 
+        }
+
+        .reel-cell {
+            height: var(--cell-height); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem; 
+            font-weight: 900;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            text-shadow: 0 0 5px var(--glow-blue);
+        }
+        
+        /* -------------------- NÚT BẤM VÀ POPUP (FIXED) -------------------- */
+        .hpc-message {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--main-gold);
+            text-shadow: 0 0 8px rgba(255, 193, 7, 0.7);
+            margin: 20px 0;
+            padding: 10px 20px;
+            border: 2px dashed var(--main-gold);
+            border-radius: 10px;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            line-height: 1.5;
+        }
+        
+        .spin-button {
+            /* Giữ nguyên */
+            background: linear-gradient(180deg, var(--main-gold) 0%, #ff8c00 100%);
+            color: var(--dark-blue);
+            font-family: 'Mali', cursive;
+            font-size: 1.8rem;
+            font-weight: 900;
+            padding: 15px 40px;
+            border: 5px solid #fff;
+            border-radius: 50px; 
+            box-shadow: 0 10px 0 #cc6600, 0 0 30px var(--glow-gold); 
+            cursor: pointer;
+            transition: all 0.1s ease-out;
+            margin-top: 30px;
+            text-transform: uppercase;
+            outline: none;
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spin-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 0 #cc6600, 0 0 40px var(--glow-gold);
+        }
+
+        .spin-button:active:not(:disabled),
+        .spin-button.spinning {
+            transform: translateY(6px); 
+            box-shadow: 0 4px 0 #cc6600; 
+            background: linear-gradient(180deg, #ff8c00 0%, var(--main-gold) 100%);
+        }
+        
+        .spin-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+            transform: none;
+            box-shadow: 0 10px 0 #cc6600;
+        }
+
+        /* Lớp phủ POPUP - Vị trí cố định (fixed) so với viewport */
+        .popup-notification {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%; 
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100;
+        }
+
+        .popup-content {
+            background-color: var(--dark-blue);
+            border: 5px solid var(--main-gold);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 0 40px var(--glow-gold);
+            transform: scale(0.5);
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.475), opacity 0.4s;
+            max-width: 90%;
+            min-width: 280px;
+        }
+        
+        .popup-notification.show .popup-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .popup-content h2 {
+            color: var(--main-gold);
+            text-shadow: 0 0 10px var(--glow-gold);
+        }
+
+        .popup-content button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: var(--main-gold);
+            color: var(--dark-blue);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .popup-content button:hover {
+            background-color: #ffda6a;
+        }
+        
+        /* -------------------- RESPONSIVE (Căn chỉnh trên Mobile) -------------------- */
+        /* Áp dụng khi màn hình nhỏ hơn hoặc bằng 600px */
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 0 40px 0; 
+            }
+            .title {
+                font-size: 1.5rem; 
+                padding: 10px 15px;
+                margin-bottom: 25px; 
+                max-width: 90%;
+            }
+            .hpc-message {
+                font-size: 1rem;
+                padding: 8px 15px;
+            }
+            .moon {
+                width: 60px; 
+                height: 60px;
+                top: 5px;
+                right: 5px;
+            }
+            .slot-frame-wrapper {
+                padding: 15px; 
+            }
+            .slot-machine {
+                padding: 10px;
+            }
+            .reel-container {
+                /* Đảm bảo 3 cuộn số vừa vặn trên màn hình nhỏ */
+                width: 70px; 
+                height: 100px; 
+                margin: 0 4px;
+            }
+            :root {
+                --reel-height: 100px;
+                --cell-height: 100px;
+            }
+            .reel-cell {
+                font-size: 2.8rem;
+            }
+            .spin-button {
+                font-size: 1.4rem;
+                padding: 12px 30px;
+            }
+            .decoration-symbol {
+                font-size: 1.8rem;
+            }
+            .deco-ct { top: -10px; font-size: 2.5rem; }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Lớp Nền và Trang trí -->
+    <div class="background-stars"></div> 
+    <div class="moon"></div> 
+
+    <div class="lantern-container">
+        <!-- 15 Đèn lồng nền -->
+        <div class="lantern l1"></div><div class="lantern l2"></div><div class="lantern l3"></div>
+        <div class="lantern l4"></div><div class="lantern l5"></div><div class="lantern l6"></div>
+        <div class="lantern l7"></div><div class="lantern l8"></div><div class="lantern l9"></div>
+        <div class="lantern l10"></div><div class="lantern l11"></div><div class="lantern l12"></div>
+        <div class="lantern l13"></div><div class="lantern l14"></div><div class="lantern l15"></div>
+    </div>
+
+    <!-- KHU VỰC GAME CHÍNH -->
+    <div class="game-area">
+        <h1 class="title">🥮 Bánh nướng bánh dẻo thì ngọt, nhưng ngọt nhất vẫn là quà từ HPC Media 🎁</h1>
+
+        <p class="hpc-message">Không có ai tặng quà thì để HPC tặng cho bạn nhé! ✨</p>
+        
+        <!-- KHUNG VIỀN NGOÀI CÙNG VÀ TRANG TRÍ -->
+        <div class="slot-frame-wrapper">
+            <!-- Biểu tượng trang trí trên khung viền -->
+            <div class="decoration-symbol deco-ct">🐉</div> 
+            <div class="decoration-symbol deco-tl">🥮</div> 
+            <div class="decoration-symbol deco-tr">🏮</div> 
+            <div class="decoration-symbol deco-bl">🏮</div> 
+            <div class="decoration-symbol deco-br">🥮</div> 
+
+            <!-- KHUNG CHỨA CÁC CUỘN SỐ -->
+            <div class="slot-machine">
+                <!-- Cột 1 -->
+                <div class="reel-container">
+                    <div class="reel" id="reel1"></div>
+                </div>
+                <!-- Cột 2 -->
+                <div class="reel-container">
+                    <div class="reel" id="reel2"></div>
+                </div>
+                <!-- Cột 3 -->
+                <div class="reel-container">
+                    <div class="reel" id="reel3"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Nút Bấm Lấy Số -->
+        <button id="spinButton" class="spin-button" onclick="startSpin()">
+            LẤY SỐ
+        </button>
+        
+    </div>
+
+    <!-- Thông Báo Pop-up -->
+    <div id="popup" class="popup-notification">
+        <div class="popup-content">
+            <h2 id="popupTitle">✨ CHÚC MỪNG! ✨</h2>
+            <p id="popupMessage">Bạn đã quay được số: **-**</p>
+            <button onclick="closePopup()">Chơi Lại</button>
+        </div>
+    </div>
+    
+    <!-- Thông tin người dùng -->
+    <div class="footer-info">
+        <p>Mã Game Chung (Project ID): <span id="sequenceDisplay">Đang kết nối...</span></p>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, setLogLevel, runTransaction, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Cấu hình chung
+        const REEL_COUNT = 3;
+        const NUMBER_RANGE = 10; 
+        const BASE_SPIN_DURATION = 3000; 
+        const CLAIMED_COLLECTION_PATH = 'claimed_numbers_mid_autumn'; 
+        
+        // =========================================================================
+        // ***** CẤU HÌNH GOOGLE SHEET LOGGING (THÔNG QUA GOOGLE FORM) *****
+        // =========================================================================
+        // THAY THẾ CÁC BIẾN DƯỚI ĐÂY KHI CHẠY TRÊN SERVER RIÊNG CỦA BẠN.
+        const GOOGLE_FORM_URL = 'YOUR_GOOGLE_FORM_POST_URL'; 
+        const FORM_ENTRY_RESULT = 'ENTRY_ID_FOR_RESULT';       
+        const FORM_ENTRY_USER_ID = 'ENTRY_ID_FOR_USER_ID';     
+
+        // =========================================================================
+        // ***** CẤU HÌNH FIREBASE KHI CHẠY ĐỘC LẬP (BẮT BUỘC PHẢI CÓ) *****
+        // =========================================================================
+        // !!! BẠN PHẢI THAY THẾ TOÀN BỘ CÁC GIÁ TRỊ GIẢ LẬP BÊN DƯỚI BẰNG CẤU HÌNH
+        // !!! THẬT CỦA DỰ ÁN FIREBASE CỦA BẠN (sau khi tạo Web App).
+        const FALLBACK_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyB_REPLACE_WITH_YOUR_API_KEY", 
+            authDomain: "replace-with-your-project-id.firebaseapp.com",
+            projectId: "replace-with-your-project-id", // RẤT QUAN TRỌNG
+            storageBucket: "replace-with-your-project-id.appspot.com",
+            messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+            appId: "1:REPLACE_WITH_YOUR_APP_ID:web:hashvalue"
+        };
+
+        // Kiểm tra nếu biến môi trường Canvas không tồn tại, sử dụng giá trị giả lập.
+        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Biến toàn cục
+        const reelElements = [];
+        const finalResults = [];
+        const spinButton = document.getElementById('spinButton');
+        const popup = document.getElementById('popup');
+        const popupMessage = document.getElementById('popupMessage');
+        const popupTitle = document.getElementById('popupTitle');
+        const sequenceDisplay = document.getElementById('sequenceDisplay'); 
+
+        let CELL_HEIGHT_PX = 120; 
+        let db, auth, userId, appId;
+
+
+        // -------------------- PHẦN FIREBASE & CẤU HÌNH CHUNG --------------------
+        
+        async function setupFirebase() {
+            setLogLevel('Debug');
+            
+            let firebaseConfig;
+            let isStandalone = false;
+            
+            if (firebaseConfigRaw) {
+                // SỬ DỤNG CẤU HÌNH TỪ MÔI TRƯỜNG CANVAS (Ưu tiên)
+                firebaseConfig = JSON.parse(firebaseConfigRaw);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-canvas-app-id';
+            } else {
+                // SỬ DỤNG CẤU HÌNH DỰ PHÒNG (Standalone Mode - GitHub Pages)
+                isStandalone = true;
+                firebaseConfig = FALLBACK_FIREBASE_CONFIG;
+                
+                // Sử dụng projectId làm AppId khi chạy độc lập để tạo path Firestore
+                appId = firebaseConfig.projectId || 'FALLBACK-GAME-ID-STANDALONE'; 
+                
+                console.warn("Firebase running in STANDALONE mode. Ensure you updated FALLBACK_FIREBASE_CONFIG.");
+            }
+
+            if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.projectId || firebaseConfig.projectId.includes('replace-with')) {
+                console.error("Firebase config is invalid or needs to be replaced.");
+                sequenceDisplay.textContent = "Lỗi: Cần thay cấu hình Firebase!";
+                spinButton.disabled = true;
+                return;
+            }
+
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            try {
+                // Xác thực người dùng
+                if (initialAuthToken && !isStandalone) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // Cần thiết để ghi dữ liệu công khai trên Firestore
+                    await signInAnonymously(auth);
+                }
+                
+                // Lưu userId (ID ẩn danh của người chơi)
+                userId = auth.currentUser?.uid || crypto.randomUUID(); 
+                
+                // Hiển thị Project ID/App ID để người dùng biết dữ liệu lưu ở đâu
+                sequenceDisplay.textContent = appId; 
+                console.log("Firebase Ready. App/Project ID:", appId, "User ID:", userId);
+            } catch (error) {
+                console.error("Firebase Authentication failed:", error);
+                sequenceDisplay.textContent = "Lỗi xác thực!";
+                spinButton.disabled = true;
+            }
+        }
+        
+        // -------------------- PHẦN LOGIC GHI DỮ LIỆU LÊN GOOGLE SHEET --------------------
+
+        function logToGoogleSheet(resultString, uId) {
+            if (GOOGLE_FORM_URL.includes('YOUR_GOOGLE_FORM_POST_URL')) {
+                console.warn("Google Sheet Logging SKIPPED: Vui lòng cấu hình GOOGLE_FORM_URL và Entry IDs.");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append(FORM_ENTRY_RESULT, resultString);
+            formData.append(FORM_ENTRY_USER_ID, uId);
+
+            fetch(GOOGLE_FORM_URL, {
+                method: 'POST',
+                body: formData,
+                mode: 'no-cors', 
+            })
+            .then(() => console.log('Successfully logged to Google Sheet (via Google Form).'))
+            .catch(error => console.error('Error logging to Google Sheet:', error));
+        }
+
+        // -------------------- PHẦN LOGIC QUAY SỐ DUY NHẤT --------------------
+        // Path Firestore: /artifacts/{appId}/public/data/claimed_numbers_mid_autumn/{số_quay_được}
+        // Việc sử dụng Transaction đảm bảo số được quay ra là DUY NHẤT.
+        
+        async function generateUniqueResultAndClaim() {
+            if (!db) throw new Error("Database not initialized or config is missing.");
+
+            // Tham chiếu đến collection công khai lưu trữ các số đã được quay
+            const claimedRef = collection(db, `artifacts/${appId}/public/data/${CLAIMED_COLLECTION_PATH}`);
+            let attemptCount = 0;
+            const MAX_ATTEMPTS = 50; 
+
+            while (attemptCount < MAX_ATTEMPTS) {
+                attemptCount++;
+
+                // 1. Tạo 3 chữ số ngẫu nhiên (0-9)
+                const d1 = Math.floor(Math.random() * 10);
+                const d2 = Math.random() < 0.5 ? Math.floor(Math.random() * 10) : Math.floor(Math.random() * 10);
+                const d3 = Math.random() < 0.5 ? Math.floor(Math.random() * 10) : Math.floor(Math.random() * 10);
+                
+                const newResult = [d1, d2, d3];
+                const resultString = newResult.join(''); // Ví dụ: "123"
+
+                try {
+                    // 2. Sử dụng Transaction để kiểm tra và ghi nhận số (Claim)
+                    const claimedResult = await runTransaction(db, async (transaction) => {
+                        const docRef = doc(claimedRef, resultString);
+                        const docSnap = await transaction.get(docRef);
+
+                        if (docSnap.exists()) {
+                            // Nếu số đã có, Transaction sẽ tự động Rollback
+                            throw new Error("ALREADY_CLAIMED"); 
+                        } else {
+                            // Ghi nhận số duy nhất vào Firestore
+                            transaction.set(docRef, {
+                                result: resultString,
+                                claimedByUserId: userId, 
+                                timestamp: new Date().toISOString(),
+                            });
+                            
+                            return newResult; // Trả về số đã Claim thành công
+                        }
+                    });
+                    
+                    return claimedResult; 
+
+                } catch (e) {
+                    if (e.message === "ALREADY_CLAIMED") {
+                        continue; // Tiếp tục thử quay số khác
+                    } else {
+                        console.error("Firebase Transaction Error:", e);
+                        throw new Error("Lỗi hệ thống khi quay số (TXN). Vui lòng thử lại.");
+                    }
+                }
+            }
+
+            throw new Error("Đã hết số may mắn hoặc quá nhiều người chơi cùng lúc. Vui lòng thử lại sau.");
+        }
+        
+        // Khởi tạo các cuộn số (CHỈ CHỨA SỐ 0-9)
+        function initializeReels() {
+            const rootStyle = getComputedStyle(document.documentElement);
+            CELL_HEIGHT_PX = parseInt(rootStyle.getPropertyValue('--cell-height').replace('px', ''));
+            
+            reelElements.length = 0;
+
+            for (let i = 1; i <= REEL_COUNT; i++) {
+                const reel = document.getElementById(`reel${i}`);
+                reelElements.push(reel);
+                
+                let reelContent = '';
+                
+                // Lặp 3 lần dải số 0-9 để đảm bảo cuộn có độ dài đủ cho animation
+                for (let k = 0; k < 3; k++) { 
+                    for (let j = 0; j < NUMBER_RANGE; j++) { 
+                        reelContent += `<div class="reel-cell">${j}</div>`;
+                    }
+                }
+
+                reel.innerHTML = reelContent;
+            }
+        }
+        
+        /**
+         * Hoạt động quay số cho từng cuộn (reel)
+         */
+        function spinReel(index, targetDigit) {
+            const reel = reelElements[index];
+            
+            return new Promise(resolve => {
+                
+                // Vị trí dừng: 2 lần lặp đầy đủ + targetDigit
+                const stopIndex = (2 * NUMBER_RANGE) + targetDigit; 
+                const stopPosition = -(stopIndex * CELL_HEIGHT_PX); 
+                
+                // Delay và Duration tăng dần theo cột (index)
+                const sequentialDelay = index * 500; 
+                const duration = BASE_SPIN_DURATION + sequentialDelay; 
+                
+                reel.style.transition = 'none'; 
+                reel.style.transform = 'translateY(0px)';
+                
+                reel.classList.add('spinning-blur');
+                
+                setTimeout(() => {
+                    reel.style.transition = `transform ${duration / 1000}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
+                    reel.style.transform = `translateY(${stopPosition}px)`;
+                    
+                    const transitionEndListener = () => {
+                        reel.removeEventListener('transitionend', transitionEndListener);
+                        reel.classList.remove('spinning-blur');
+                        resolve(targetDigit);
+                    };
+                    
+                    reel.addEventListener('transitionend', transitionEndListener);
+                }, 10 + sequentialDelay); 
+            });
+        }
+        
+        // Bắt đầu quay
+        async function startSpin() {
+            spinButton.disabled = true;
+            spinButton.classList.add('spinning');
+            
+            finalResults.length = 0;
+            
+            const rootStyle = getComputedStyle(document.documentElement);
+            CELL_HEIGHT_PX = parseInt(rootStyle.getPropertyValue('--cell-height').replace('px', ''));
+
+            let randomDigits;
+            try {
+                // Bước 1: Tạo và Claim số duy nhất từ Firestore
+                randomDigits = await generateUniqueResultAndClaim(); 
+            } catch (error) {
+                // Xử lý lỗi khi không tạo được số (ví dụ: hết số hoặc lỗi hệ thống)
+                spinButton.classList.remove('spinning');
+                spinButton.disabled = false;
+                showPopup(error.message, "error");
+                return; 
+            }
+
+            // Bước 2: Bắt đầu animation với số vừa được Claim
+            const spinPromises = reelElements.map((_, index) => 
+                spinReel(index, randomDigits[index])
+            );
+            
+            await Promise.all(spinPromises);
+            
+            spinButton.classList.remove('spinning');
+            
+            const finalString = randomDigits.join(' - ');
+            
+            // GỌI HÀM LOGGING SAU KHI QUAY THÀNH CÔNG VÀ ĐÃ CLAIM
+            logToGoogleSheet(randomDigits.join(''), userId); 
+
+            showPopup(finalString, "success");
+            
+            spinButton.disabled = false;
+        }
+
+        // Hiển thị Pop-up
+        function showPopup(message, type) {
+            if (type === "error") {
+                popupTitle.textContent = "❌ LỖI RỒI! ❌";
+                popupTitle.style.color = '#ff4444';
+                popupMessage.innerHTML = `<p style="color: #ffcccc; font-weight: 700;">${message}</p>`;
+            } else {
+                popupTitle.textContent = "✨ CHÚC MỪNG! ✨";
+                popupTitle.style.color = 'var(--main-gold)';
+                const resultHtml = `Bạn đã quay được bộ số may mắn: <br><span style="font-size: 1.8em; color: var(--main-gold); text-shadow: 0 0 10px var(--glow-gold);">${message}</span>`;
+                const noteHtml = `<p style="margin-top: 15px; font-weight: 700; color: #eee;">📸 Hãy chụp ảnh màn hình lại và cmt số mà bạn đã quay được cho tụi mình nhé! 📝</p>`;
+                popupMessage.innerHTML = resultHtml + noteHtml;
+            }
+            
+            popup.style.display = 'flex';
+            
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 10);
+        }
+
+        // Đóng Pop-up
+        window.closePopup = function() {
+            popup.classList.remove('show');
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 400); 
+        }
+
+        // Xử lý khi cửa sổ thay đổi kích thước
+        window.onresize = initializeReels;
+        
+        // Khởi tạo Firebase và game khi trang tải xong
+        window.onload = async function() {
+            await setupFirebase();
+            initializeReels();
+        };
+
+        // Gán hàm startSpin vào window để HTML có thể gọi
+        window.startSpin = startSpin;
+    </script>
+</body>
+</html>
